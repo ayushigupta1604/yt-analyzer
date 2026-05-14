@@ -1,105 +1,115 @@
 import streamlit as st
 import os
 import pandas as pd
+import requests
 from googleapiclient.discovery import build
 import google.generativeai as genai
+from streamlit_lottie import st_lottie
 
-# --- PAGE CONFIG ---
-st.set_page_config(page_title="YT Market Intelligence", page_icon="📊", layout="wide")
+# --- UI ENHANCEMENTS (Industry Grade) ---
+st.set_page_config(page_title="AnalystPro | YT Intelligence", page_icon="📈", layout="wide")
 
-st.title("📈 YouTube Market Intelligence Dashboard")
-st.markdown("---")
+# Custom CSS for a professional look
+st.markdown("""
+    <style>
+    .main { background-color: #f8f9fa; }
+    .stMetric { background-color: #ffffff; border-radius: 10px; padding: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+    h1, h2, h3 { font-family: 'Inter', sans-serif; color: #1e293b; }
+    .stButton>button { width: 100%; border-radius: 5px; height: 3em; background-color: #0f172a; color: white; }
+    </style>
+    """, unsafe_content_with_con_scope=True)
 
-# --- SECURE API KEY LOADING ---
+# Function for Motion Graphics
+def load_lottieurl(url):
+    r = requests.get(url)
+    if r.status_code != 200: return None
+    return r.json()
+
+lottie_loading = load_lottieurl("https://assets5.lottiefiles.com/packages/lf20_0m8bt9tf.json")
+
+# --- APP HEADER ---
+st.title("📊 AnalystPro: Market Intelligence")
+st.caption("Advanced Video Performance & Trend Analysis Engine | May 2026 Edition")
+
+# --- KEYS & INPUT ---
 yt_api_key = os.environ.get("YOUTUBE_API_KEY")
 gemini_api_key = os.environ.get("GEMINI_API_KEY")
 
-# --- USER INPUT ---
-st.subheader("1. Enter Target Channel")
-channel_id = st.text_input("Enter the YouTube Channel ID:")
+channel_id = st.text_input("Target Channel ID", placeholder="Paste Channel ID here...")
 
-if st.button("Run Market Analysis"):
+if st.button("Generate Comprehensive Report"):
     if not yt_api_key or not gemini_api_key:
-        st.warning("API keys missing in Render settings.")
-    elif not channel_id:
-        st.warning("Please enter a Channel ID.")
+        st.error("API configuration missing.")
     else:
         try:
-            with st.spinner("Analyzing channel & querying AI..."):
-                youtube = build('youtube', 'v3', developerKey=yt_api_key)
+            # ADVANCED LOAD SEQUENCE
+            with st.empty():
+                st_lottie(lottie_loading, height=200, key="loader")
+                st.write("🔍 Extracting metadata and calculating outliers...")
                 
-                # 1. Fetch channel stats
+                # Fetch Data
+                youtube = build('youtube', 'v3', developerKey=yt_api_key)
                 ch_req = youtube.channels().list(part='statistics,contentDetails', id=channel_id).execute()
                 stats = ch_req['items'][0]['statistics']
                 uploads_id = ch_req['items'][0]['contentDetails']['relatedPlaylists']['uploads']
                 
-                # 2. Display Overview
-                col1, col2, col3 = st.columns(3)
-                col1.metric("Subscribers", stats.get('subscriberCount', '0'))
-                col2.metric("Total Views", stats.get('viewCount', '0'))
-                col3.metric("Video Count", stats.get('videoCount', '0'))
-
-                # 3. Fetch Last 50 Videos
-                res = youtube.playlistItems().list(playlistId=uploads_id, part='snippet,contentDetails', maxResults=50).execute()
+                res = youtube.playlistItems().list(playlistId=uploads_id, part='contentDetails', maxResults=50).execute()
                 video_ids = [item['contentDetails']['videoId'] for item in res['items']]
                 v_res = youtube.videos().list(id=','.join(video_ids), part='statistics,snippet').execute()
                 
                 video_data = []
                 for v in v_res['items']:
                     video_data.append({
-                        'ID': v['id'],
                         'Title': v['snippet']['title'],
-                        'Description': v['snippet']['description'],
+                        'Desc': v['snippet']['description'],
                         'Views': int(v['statistics'].get('viewCount', 0)),
                         'Link': f"https://www.youtube.com/watch?v={v['id']}"
                     })
-                
                 df = pd.DataFrame(video_data)
+                avg_v = df['Views'].mean()
+            
+            # --- DASHBOARD TABS ---
+            tab1, tab2, tab3 = st.tabs(["📈 Performance Overview", "🧠 AI Insights", "🌍 Market Pulse"])
+
+            with tab1:
+                col1, col2, col3 = st.columns(3)
+                col1.metric("Subscribers", f"{int(stats.get('subscriberCount', 0)):,}")
+                col2.metric("Total Views", f"{int(stats.get('viewCount', 0)):,}")
+                col3.metric("Recent Avg Views", f"{int(avg_v):,}")
                 
-                # 4. Identify Viral Outlier
-                avg_views = df['Views'].mean()
-                viral_idx = df['Views'].idxmax()
-                viral_video = df.loc[viral_idx]
-                
-                st.markdown("---")
-                st.subheader("🔥 Viral Performance & AI Analysis")
-                st.write(f"**Most Viral Video:** {viral_video['Title']}")
-                st.write(f"🎯 **Views:** {viral_video['Views']:,} ({round(viral_video['Views']/avg_views, 1)}x higher than average)")
-                
-                # 5. --- GEMINI AI ANALYSIS ---
+                st.subheader("Video Performance Spread")
+                st.bar_chart(df.set_index('Title')['Views'])
+
+            with tab2:
                 genai.configure(api_key=gemini_api_key)
-                # FIX: Using the current 2026 model version
-                model = genai.GenerativeModel('gemini-2.5-flash') 
+                model = genai.GenerativeModel('gemini-2.5-flash')
+
+                # VIRAL ANALYSIS
+                viral = df.loc[df['Views'].idxmax()]
+                st.success(f"💎 **Top Performer:** {viral['Title']}")
                 
-                ai_prompt = f"""
-                You are an expert YouTube market analyst. Analyze this viral video metadata:
-                Title: {viral_video['Title']}
-                Description: {viral_video['Description'][:500]} 
+                # LEAST VIEWED ANALYSIS (The "Underperformer" Section)
+                least = df.loc[df['Views'].idxmin()]
+                st.warning(f"📉 **Lowest Performer:** {least['Title']}")
+
+                col_v, col_l = st.columns(2)
                 
-                Why did this go viral? Provide 3 short, punchy bullet points explaining the potential psychological hooks, keyword strategies, or audience appeal.
-                """
+                with col_v:
+                    st.write("**Why this went Viral:**")
+                    prompt_v = f"In simple, professional English, why did this video go viral? Title: {viral['Title']}. Give 3 bullet points."
+                    st.write(model.generate_content(prompt_v).text)
                 
-                ai_response = model.generate_content(ai_prompt)
-                
-                with st.expander("🤖 Read AI Breakdown on Why it Went Viral", expanded=True):
-                    st.write(ai_response.text)
+                with col_l:
+                    st.write("**Why this underperformed:**")
+                    prompt_l = f"In simple, professional English, why does this video have the least views on the channel? Title: {least['Title']}. Give 3 bullet points."
+                    st.write(model.generate_content(prompt_l).text)
+
+            with tab3:
+                st.subheader("May 2026 Market Context")
+                st.markdown("""
+                *   **India Focus:** The "Regional Micro-Niche" trend is peaking. Small, specific topics in local languages are outperforming broad English content.
+                *   **Global Focus:** "Hyper-Authentication"—audiences are rejecting over-edited videos for raw, behind-the-scenes expert analysis.
+                """)
 
         except Exception as e:
-            st.error(f"Something went wrong: {e}")
-
-# --- GLOBAL & INDIA MARKET TRENDS ---
-st.markdown("---")
-st.subheader("📰 May 2026 Market Pulse: Creator Economy Trends")
-colA, colB = st.columns(2)
-
-with colA:
-    st.info("**Trending in India 🇮🇳**\n"
-            "* **The 'How-To' Boom:** Keeping videos short and simple to teach skills rapidly is a leading trend.\n"
-            "* **Shorts-First Strategy:** Shorts are seeing massive adoption, with creators using them as a sneak peek to drive viewers to long-form content.\n"
-            "* **AI Integration:** Tools for automatic video resizing and effortless editing are transforming Indian video production.")
-
-with colB:
-    st.info("**Global Trends 🌍**\n"
-            "* **Strategic Storytelling:** Creators who build deep narrative architectures instead of just chasing virality are winning the audience's loyalty.\n"
-            "* **Audience Ownership:** Because platform payouts are volatile, creators are prioritizing paid communities and digital products to gain stability.\n"
-            "* **IRL Events Return:** There is a huge global push for in-person retreats, dinner series, and meetups to foster real-world connections.")
+            st.error(f"Analysis failed: {e}")
