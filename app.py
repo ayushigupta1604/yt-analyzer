@@ -68,13 +68,13 @@ if st.button("Run Market Analysis"):
                 
                 # 5. --- GEMINI AI ANALYSIS ---
                 genai.configure(api_key=gemini_api_key)
-                # Note: We use gemini-1.5-flash for fast text tasks
-                model = genai.GenerativeModel('gemini-1.5-flash') 
+                # FIX: Using the current 2026 model version
+                model = genai.GenerativeModel('gemini-2.5-flash') 
                 
                 ai_prompt = f"""
                 You are an expert YouTube market analyst. Analyze this viral video metadata:
                 Title: {viral_video['Title']}
-                Description: {viral_video['Description'][:500]} # Only sending first 500 chars to save tokens
+                Description: {viral_video['Description'][:500]} 
                 
                 Why did this go viral? Provide 3 short, punchy bullet points explaining the potential psychological hooks, keyword strategies, or audience appeal.
                 """
@@ -87,19 +87,19 @@ if st.button("Run Market Analysis"):
         except Exception as e:
             st.error(f"Something went wrong: {e}")
 
-# --- GLOBAL & INDIA MARKET TRENDS (Static Data for Speed) ---
+# --- GLOBAL & INDIA MARKET TRENDS ---
 st.markdown("---")
 st.subheader("📰 May 2026 Market Pulse: Creator Economy Trends")
 colA, colB = st.columns(2)
 
 with colA:
     st.info("**Trending in India 🇮🇳**\n"
-            "* **Regional Boom:** Over 62% of creators are seeing increased demand for vernacular/regional content, especially in Tier 2 and 3 cities.\n"
-            "* **Connected TV:** Audiences are shifting to watching YouTube on TVs, leading to 30-45 minute viewing sessions and a demand for high-quality, cinematic production.\n"
-            "* **Contentpreneurship:** 15.2% of active creators are now formally registered as businesses, moving from sponsored posts to launching their own D2C products.")
+            "* **The 'How-To' Boom:** Keeping videos short and simple to teach skills rapidly is a leading trend.\n"
+            "* **Shorts-First Strategy:** Shorts are seeing massive adoption, with creators using them as a sneak peek to drive viewers to long-form content.\n"
+            "* **AI Integration:** Tools for automatic video resizing and effortless editing are transforming Indian video production.")
 
 with colB:
     st.info("**Global Trends 🌍**\n"
-            "* **AI Spectacle & Hoaxes:** AI-generated content is exploding, particularly causing issues with misleading educational children's content, making trust and human-led verification highly valuable.\n"
-            "* **Shorts-First Discovery:** Shorts remain the primary engine for discoverability, with creators using multi-format publishing to convert short-form viewers into long-form subscribers.\n"
-            "* **Video Podcasts:** There is massive growth in episodic, personality-led long-form content, as audiences seek expert perspectives and ongoing series.")
+            "* **Strategic Storytelling:** Creators who build deep narrative architectures instead of just chasing virality are winning the audience's loyalty.\n"
+            "* **Audience Ownership:** Because platform payouts are volatile, creators are prioritizing paid communities and digital products to gain stability.\n"
+            "* **IRL Events Return:** There is a huge global push for in-person retreats, dinner series, and meetups to foster real-world connections.")
